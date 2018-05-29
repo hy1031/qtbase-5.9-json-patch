@@ -1,6 +1,6 @@
 # QtBase 5.9.4 with large JSON support
 
-This is a patched version of qtbase-5.9.4 with support of large JSON files (up to 1023 of the internal representation).
+This is a patched version of qtbase-5.9.4 with support of large JSON files (up to 1023 MB of the internal representation).
 
 The original implementation of JSON in Qt has a limitation: the addressing in the internal JSON data structure uses 
 27-bit values which limits the maximal size of this data structure to be 127 MB. Therefore, valid JSON files larger than
