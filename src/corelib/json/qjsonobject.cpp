@@ -247,7 +247,7 @@ QJsonObject QJsonObject::fromVariantMap(const QVariantMap &map)
     object.o->tableOffset = currentOffset;
     if (!object.detach2(sizeof(QJsonPrivate::offset)*offsets.size()))
         return QJsonObject();
-    memcpy(object.o->table(), offsets.constData(), offsets.size()*sizeof(uint));
+    memcpy(object.o->table(), offsets.constData(), offsets.size()*sizeof(QJsonPrivate::offset));
     object.o->length = offsets.size();
     object.o->size = currentOffset + sizeof(QJsonPrivate::offset)*offsets.size();
 

@@ -78,7 +78,7 @@ void Data::compact()
     int alloc = sizeof(Header) + size;
     Header *h = (Header *) malloc(alloc);
     h->tag = QJsonDocument::BinaryFormatTag;
-    h->version = 1;
+    h->version = 2;
     Base *b = h->root();
     b->size = size;
     b->is_object = header->root()->is_object;
@@ -131,7 +131,7 @@ void Data::compact()
 
 bool Data::valid() const
 {
-    if (header->tag != QJsonDocument::BinaryFormatTag || header->version != 1u)
+    if (header->tag != QJsonDocument::BinaryFormatTag || header->version != 2u)
         return false;
 
     bool res = false;

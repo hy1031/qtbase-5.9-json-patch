@@ -308,7 +308,7 @@ QJsonDocument Parser::parse(QJsonParseError *error)
     // fill in Header data
     QJsonPrivate::Header *h = (QJsonPrivate::Header *)data;
     h->tag = QJsonDocument::BinaryFormatTag;
-    h->version = 1u;
+    h->version = 2u;
 
     current = sizeof(QJsonPrivate::Header);
 
@@ -356,7 +356,7 @@ error:
 }
 
 
-void Parser::ParsedObject::insert(uint offset) {
+void Parser::ParsedObject::insert(quint64 offset) {
     const QJsonPrivate::Entry *newEntry = reinterpret_cast<const QJsonPrivate::Entry *>(parser->data + objectPosition + offset);
     int min = 0;
     int n = offsets.size();
@@ -422,7 +422,7 @@ bool Parser::parseObject()
     int table = objectOffset;
     // finalize the object
     if (parsedObject.offsets.size()) {
-        int tableSize = parsedObject.offsets.size()*sizeof(uint);
+        int tableSize = parsedObject.offsets.size()*sizeof(quint64);
         table = reserveSpace(tableSize);
         if (table < 0)
             return false;

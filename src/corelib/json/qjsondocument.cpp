@@ -236,7 +236,7 @@ QJsonDocument QJsonDocument::fromBinaryData(const QByteArray &data, DataValidati
     memcpy(&root, data.constData() + sizeof(QJsonPrivate::Header), sizeof(QJsonPrivate::Base));
 
     // do basic checks here, so we don't try to allocate more memory than we can.
-    if (h.tag != QJsonDocument::BinaryFormatTag || h.version != 1u ||
+    if (h.tag != QJsonDocument::BinaryFormatTag || h.version != 2u ||
         sizeof(QJsonPrivate::Header) + root.size > (uint)data.size())
         return QJsonDocument();
 

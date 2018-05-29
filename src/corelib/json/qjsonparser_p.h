@@ -55,6 +55,8 @@
 #include <qjsondocument.h>
 #include <qvarlengtharray.h>
 
+#include "qjson_p.h"
+
 QT_BEGIN_NAMESPACE
 
 namespace QJsonPrivate {
@@ -72,11 +74,11 @@ public:
         ParsedObject(Parser *p, int pos) : parser(p), objectPosition(pos) {
             offsets.reserve(64);
         }
-        void insert(uint offset);
+        void insert(quint64 offset);
 
         Parser *parser;
         int objectPosition;
-        QVector<uint> offsets;
+        QVector<quint64> offsets;
 
         inline QJsonPrivate::Entry *entryAt(int i) const {
             return reinterpret_cast<QJsonPrivate::Entry *>(parser->data + objectPosition + offsets[i]);

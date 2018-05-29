@@ -297,7 +297,7 @@ QJsonArray QJsonArray::fromVariantList(const QVariantList &list)
     array.a->tableOffset = currentOffset;
     if (!array.detach2(sizeof(QJsonPrivate::offset)*values.size()))
         return QJsonArray();
-    memcpy(array.a->table(), values.constData(), values.size()*sizeof(uint));
+    memcpy(array.a->table(), values.constData(), values.size()*sizeof(QJsonPrivate::offset));
     array.a->length = values.size();
     array.a->size = currentOffset + sizeof(QJsonPrivate::offset)*values.size();
 

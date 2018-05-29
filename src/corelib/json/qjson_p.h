@@ -81,40 +81,40 @@ QT_BEGIN_NAMESPACE
     Latin1 data: 2 bytes header + string.length()
     Full Unicode: 4 bytes header + 2*(string.length())
 
-  Values: 4 bytes + size of data (size can be 0 for some data)
+  Values: 8 bytes + size of data (size can be 0 for some data)
     bool: 0 bytes
-    double: 8 bytes (0 if integer with less than 27bits)
+    double: 8 bytes (0 if integer with less than 30bits)
     string: see above
     array: size of array
     object: size of object
-  Array: 12 bytes + 4*length + size of Value data
-  Object: 12 bytes + 8*length + size of Key Strings + size of Value data
+  Array: 20 bytes + 8*length + size of Value data
+  Object: 20 bytes + 8*length + size of Key Strings + size of Value data
 
   For an example such as
 
-    {                                           // object: 12 + 5*8                   = 52
+    {                                           // object: 20 + 5*8                   = 60
          "firstName": "John",                   // key 12, value 8                    = 20
          "lastName" : "Smith",                  // key 12, value 8                    = 20
          "age"      : 25,                       // key 8, value 0                     = 8
-         "address"  :                           // key 12, object below               = 140
-         {                                      // object: 12 + 4*8
+         "address"  :                           // key 12, object below               = 148
+         {                                      // object: 20 + 4*8
              "streetAddress": "21 2nd Street",  // key 16, value 16
              "city"         : "New York",       // key 8, value 12
              "state"        : "NY",             // key 8, value 4
              "postalCode"   : "10021"           // key 12, value 8
-         },                                     // object total: 128
-         "phoneNumber":                         // key: 16, value array below         = 172
-         [                                      // array: 12 + 2*4 + values below: 156
-             {                                  // object 12 + 2*8
+         },                                     // object total: 136
+         "phoneNumber":                         // key: 16, value array below         = 196
+         [                                      // array: 20 + 2*4 + values below: 180
+             {                                  // object 20 + 2*8
                "type"  : "home",                // key 8, value 8
                "number": "212 555-1234"         // key 8, value 16
-             },                                 // object total: 68
-             {                                  // object 12 + 2*8
+             },                                 // object total: 76
+             {                                  // object 20 + 2*8
                "type"  : "fax",                 // key 8, value 8
                "number": "646 555-4567"         // key 8, value 16
-             }                                  // object total: 68
+             }                                  // object total: 76
          ]                                      // array total: 156
-    }                                           // great total:                         412 bytes
+    }                                           // great total:                         452 bytes
 
     The uncompressed text file used roughly 500 bytes, so in this case we end up using about
     the same space as the text representation.
@@ -172,28 +172,31 @@ typedef q_littleendian<short> qle_short;
 typedef q_littleendian<unsigned short> qle_ushort;
 typedef q_littleendian<int> qle_int;
 typedef q_littleendian<unsigned int> qle_uint;
+typedef q_littleendian<unsigned long long> qle_ullint;
+typedef quint64 ulonglong;
 
-template<int pos, int width>
+template<int pos, int width, typename BackingType = uint>
 class qle_bitfield
 {
-public:
-    uint val;
+    Q_STATIC_ASSERT_X(pos + width <= sizeof(BackingType) * 8, "Backing type is too small!");
+    Q_STATIC_ASSERT_X(width <= sizeof(BackingType) * 8, "Width cannot exceed the backing type!");
 
-    enum {
-        mask = ((1u << width) - 1) << pos
-    };
+public:
+    BackingType val;
+
+    static Q_CONSTEXPR BackingType mask = ((static_cast<BackingType>(1) << width) - 1) << pos;
 
     void operator =(uint t) {
-        uint i = qFromLittleEndian(val);
+        BackingType i = qFromLittleEndian(val);
         i &= ~mask;
-        i |= t << pos;
+        i |= static_cast<BackingType>(t) << pos;
         val = qToLittleEndian(i);
     }
     operator uint() const {
-        uint t = qFromLittleEndian(val);
+        BackingType t = qFromLittleEndian(val);
         t &= mask;
         t >>= pos;
-        return t;
+        return static_cast<uint>(t);
     }
     bool operator !() const {
         return !operator uint();
@@ -223,28 +226,29 @@ public:
     }
 };
 
-template<int pos, int width>
+template<int pos, int width, typename BackingType = uint>
 class qle_signedbitfield
 {
-public:
-    uint val;
+    Q_STATIC_ASSERT_X(pos + width <= sizeof(BackingType) * 8, "Backing type is too small!");
+    Q_STATIC_ASSERT_X(width <= sizeof(BackingType) * 8, "Width cannot exceed the backing type!");
 
-    enum {
-        mask = ((1u << width) - 1) << pos
-    };
+public:
+    BackingType val;
+
+    static Q_CONSTEXPR BackingType mask = ((static_cast<BackingType>(1) << width) - 1) << pos;
 
     void operator =(int t) {
-        uint i = qFromLittleEndian(val);
+        BackingType i = qFromLittleEndian(val);
         i &= ~mask;
         i |= t << pos;
         val = qToLittleEndian(i);
     }
     operator int() const {
-        uint i = qFromLittleEndian(val);
-        i <<= 32 - width - pos;
-        int t = (int) i;
-        t >>= 32 - width;
-        return t;
+        BackingType i = qFromLittleEndian(val);
+        i <<= sizeof(BackingType) * 8 - width - pos;
+        auto t = static_cast<typename std::make_signed<BackingType>::type>(i);
+        t >>= sizeof(t) * 8 - width;
+        return static_cast<int>(t);
     }
     bool operator !() const {
         return !operator int();
@@ -266,7 +270,7 @@ public:
     }
 };
 
-typedef qle_uint offset;
+typedef qle_ullint offset;
 
 // round the size up to the next 4 byte boundary
 inline int alignedSize(int size) { return (size + 3) & ~3; }
@@ -293,7 +297,7 @@ static inline int qStringSize(const QString &string, bool compress)
     return alignedSize(l);
 }
 
-// returns INT_MAX if it can't compress it into 28 bits
+// returns INT_MAX if it can't compress it into 30 bits
 static inline int compressedNumber(double d)
 {
     // this relies on details of how ieee floats are represented
@@ -304,7 +308,7 @@ static inline int compressedNumber(double d)
     quint64 val;
     memcpy (&val, &d, sizeof(double));
     int exp = (int)((val & exponent_mask) >> exponent_off) - 1023;
-    if (exp < 0 || exp > 25)
+    if (exp < 0 || exp > 28)
         return INT_MAX;
 
     quint64 non_int = val & (fraction_mask >> exp);
@@ -631,20 +635,22 @@ public:
     bool isValid(int maxSize) const;
 };
 
-
 class Value
 {
+    using BackingType = quint64;
+    static Q_CONSTEXPR int MaxWidth = 30;
 public:
     enum {
-        MaxSize = (1<<27) - 1
+        MaxSize = (1<<MaxWidth) - 1
     };
+
     union {
-        uint _dummy;
-        qle_bitfield<0, 3> type;
-        qle_bitfield<3, 1> latinOrIntValue;
-        qle_bitfield<4, 1> latinKey;
-        qle_bitfield<5, 27> value;
-        qle_signedbitfield<5, 27> int_value;
+        BackingType _dummy;
+        qle_bitfield<0, 3, BackingType> type;
+        qle_bitfield<3, 1, BackingType> latinOrIntValue;
+        qle_bitfield<4, 1, BackingType> latinKey;
+        qle_bitfield<5, MaxWidth, BackingType> value;
+        qle_signedbitfield<5, MaxWidth, BackingType> int_value;
     };
 
     inline char *data(const Base *b) const { return ((char *)b) + value; }
@@ -761,7 +767,7 @@ inline bool operator<(QLatin1String key, const Entry &e)
 class Header {
 public:
     qle_uint tag; // 'qbjs'
-    qle_uint version; // 1
+    qle_uint version; // 2
     Base *root() { return (Base *)(this + 1); }
 };
 
@@ -840,7 +846,7 @@ public:
         header = (Header *)malloc(alloc);
         Q_CHECK_PTR(header);
         header->tag = QJsonDocument::BinaryFormatTag;
-        header->version = 1;
+        header->version = 2;
         Base *b = header->root();
         b->size = sizeof(Base);
         b->is_object = (valueType == QJsonValue::Object);
@@ -882,7 +888,7 @@ public:
         memcpy(raw + sizeof(Header), b, b->size);
         Header *h = (Header *)raw;
         h->tag = QJsonDocument::BinaryFormatTag;
-        h->version = 1;
+        h->version = 2;
         Data *d = new Data(raw, size);
         d->compactionCounter = (b == header->root()) ? compactionCounter : 0;
         return d;
